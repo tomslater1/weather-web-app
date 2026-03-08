@@ -1,12 +1,14 @@
+import hashlib
 import os
 import re
 import time
 import unicodedata
 from datetime import datetime, timedelta, timezone
-from urllib.parse import quote_plus
+from html import escape
+from urllib.parse import quote_plus, unquote_plus
 
 import requests
-from flask import Flask, redirect, render_template, request, url_for
+from flask import Flask, Response, redirect, render_template, request, url_for
 
 app = Flask(__name__)
 
@@ -40,31 +42,6 @@ SAVED_CITIES = [
     "Seoul",
     "Cape Town",
 ]
-
-CITY_BACKGROUNDS = {
-    "Manchester": "https://source.unsplash.com/1600x1000/?manchester,city,skyline&sig=11",
-    "London": "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=1600&q=80",
-    "Edinburgh": "https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?auto=format&fit=crop&w=1600&q=80",
-    "Montreal": "https://images.unsplash.com/photo-1519178614-68673b201f36?auto=format&fit=crop&w=1600&q=80",
-    "Dublin": "https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=1600&q=80",
-    "New York": "https://images.unsplash.com/photo-1499092346589-b9b6be3e94b2?auto=format&fit=crop&w=1600&q=80",
-    "Paris": "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1600&q=80",
-    "Tokyo": "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=1600&q=80",
-    "Barcelona": "https://images.unsplash.com/photo-1583422409516-2895a77efded?auto=format&fit=crop&w=1600&q=80",
-    "Singapore": "https://images.unsplash.com/photo-1525625293386-3f8f99389edd?auto=format&fit=crop&w=1600&q=80",
-    "Sydney": "https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?auto=format&fit=crop&w=1600&q=80",
-    "Dubai": "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1600&q=80",
-    "Amsterdam": "https://source.unsplash.com/1600x1000/?amsterdam,city,canal&sig=12",
-    "Berlin": "https://source.unsplash.com/1600x1000/?berlin,city,skyline&sig=13",
-    "Rome": "https://source.unsplash.com/1600x1000/?rome,city,italy&sig=14",
-    "Madrid": "https://source.unsplash.com/1600x1000/?madrid,city,spain&sig=15",
-    "Los Angeles": "https://source.unsplash.com/1600x1000/?los-angeles,city,skyline&sig=16",
-    "Toronto": "https://source.unsplash.com/1600x1000/?toronto,city,skyline&sig=17",
-    "San Francisco": "https://source.unsplash.com/1600x1000/?san-francisco,city,bridge&sig=18",
-    "Hong Kong": "https://source.unsplash.com/1600x1000/?hong-kong,city,skyline&sig=19",
-    "Seoul": "https://source.unsplash.com/1600x1000/?seoul,city,night&sig=20",
-    "Cape Town": "https://source.unsplash.com/1600x1000/?cape-town,city,mountain&sig=21",
-}
 
 AQI_LABELS = {
     1: "Good",
@@ -114,13 +91,123 @@ def icon_url(icon_code):
 
 
 def city_image_url(city_name):
-    if not city_name:
-        return ""
-    for mapped_city, image_url in CITY_BACKGROUNDS.items():
-        if mapped_city.lower() == city_name.lower():
-            return image_url
-    query = quote_plus(f"{city_name} skyline night")
-    return f"https://source.unsplash.com/1600x1000/?{query}"
+    safe_city = quote_plus((city_name or "City").strip())
+    return f"/city-image/{safe_city}?v=2"
+
+
+def city_palette(city_name):
+    palettes = [
+        ("#0c4a6e", "#0ea5a6", "#f59e0b"),
+        ("#1d4ed8", "#0f766e", "#f97316"),
+        ("#7c3aed", "#2563eb", "#14b8a6"),
+        ("#be123c", "#4338ca", "#0ea5a6"),
+        ("#065f46", "#1d4ed8", "#ea580c"),
+    ]
+    digest = int(hashlib.sha256(city_name.lower().encode("utf-8")).hexdigest(), 16)
+    return palettes[digest % len(palettes)]
+
+
+def deterministic_values(seed_text, count):
+    values = []
+    state = seed_text.encode("utf-8")
+    while len(values) < count:
+        state = hashlib.sha256(state).digest()
+        values.extend(byte / 255 for byte in state)
+    return values[:count]
+
+
+def build_city_image_svg(city_name):
+    first, second, accent = city_palette(city_name)
+    safe_city = escape(city_name)
+    initials = "".join(word[0] for word in city_name.split()[:2]).upper() or "CT"
+    values = deterministic_values(city_name.lower(), 320)
+
+    skyline_back = []
+    skyline_front = []
+    window_glow = []
+
+    x = -18
+    for i in range(20):
+        width = 34 + int(values[i] * 72)
+        height = 130 + int(values[40 + i] * 250)
+        y = 780 - height
+        radius = 6 + int(values[80 + i] * 8)
+        opacity = 0.26 + values[120 + i] * 0.24
+        skyline_back.append(
+            f"<rect x='{x}' y='{y}' width='{width}' height='{height}' rx='{radius}' fill='#020617' opacity='{opacity:.3f}' />"
+        )
+        x += width - 10
+
+    x = -24
+    for i in range(26):
+        width = 26 + int(values[160 + i] * 64)
+        height = 180 + int(values[200 + i] * 410)
+        y = 840 - height
+        radius = 5 + int(values[240 + i] * 8)
+        opacity = 0.46 + values[280 + i] * 0.38
+        skyline_front.append(
+            f"<rect x='{x}' y='{y}' width='{width}' height='{height}' rx='{radius}' fill='#01050f' opacity='{opacity:.3f}' />"
+        )
+
+        window_cols = max(1, int(width / 18))
+        for col in range(window_cols):
+            wx = x + 7 + col * 14
+            if wx > x + width - 8:
+                continue
+            for row in range(6):
+                if values[(i * 7 + col * 5 + row) % len(values)] > 0.53:
+                    wy = y + 14 + row * 19
+                    if wy < y + height - 8:
+                        window_glow.append(
+                            f"<rect x='{wx}' y='{wy}' width='4' height='8' rx='2' fill='{accent}' opacity='0.34' />"
+                        )
+
+        x += width - 20
+
+    return f"""<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000' role='img' aria-label='{safe_city}'>
+<defs>
+  <linearGradient id='sky' x1='0' y1='0' x2='1' y2='1'>
+    <stop offset='0%' stop-color='{first}' />
+    <stop offset='58%' stop-color='{second}' />
+    <stop offset='100%' stop-color='#020617' />
+  </linearGradient>
+  <linearGradient id='mist' x1='0' y1='0' x2='0' y2='1'>
+    <stop offset='0%' stop-color='rgba(255,255,255,0.06)' />
+    <stop offset='70%' stop-color='rgba(2,6,23,0.24)' />
+    <stop offset='100%' stop-color='rgba(2,6,23,0.78)' />
+  </linearGradient>
+  <radialGradient id='sun' cx='0.2' cy='0.2' r='0.7'>
+    <stop offset='0%' stop-color='{accent}' stop-opacity='0.74' />
+    <stop offset='65%' stop-color='{accent}' stop-opacity='0.1' />
+    <stop offset='100%' stop-color='transparent' />
+  </radialGradient>
+  <filter id='softGlow'><feGaussianBlur stdDeviation='62' /></filter>
+  <filter id='grain' x='-10%' y='-10%' width='120%' height='120%'>
+    <feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch' />
+    <feColorMatrix type='saturate' values='0' />
+    <feComponentTransfer>
+      <feFuncA type='table' tableValues='0 0.06' />
+    </feComponentTransfer>
+  </filter>
+  <pattern id='scan' width='4' height='4' patternUnits='userSpaceOnUse'>
+    <rect width='4' height='1' fill='rgba(255,255,255,0.02)' />
+  </pattern>
+</defs>
+<rect width='1600' height='1000' fill='url(#sky)' />
+<rect width='1600' height='1000' fill='url(#scan)' />
+<circle cx='260' cy='210' r='320' fill='url(#sun)' filter='url(#softGlow)' />
+<circle cx='1320' cy='770' r='260' fill='{accent}' opacity='0.16' filter='url(#softGlow)' />
+<path d='M0 640 C220 560, 360 560, 520 620 C680 680, 820 700, 1020 640 C1180 592, 1350 600, 1600 690 L1600 1000 L0 1000 Z' fill='rgba(2,6,23,0.36)' />
+<g>{''.join(skyline_back)}</g>
+<g>{''.join(skyline_front)}</g>
+<g>{''.join(window_glow)}</g>
+<rect width='1600' height='1000' fill='url(#mist)' />
+<rect width='1600' height='1000' filter='url(#grain)' />
+<rect x='74' y='694' width='1452' height='246' rx='28' fill='rgba(2,6,23,0.52)' stroke='rgba(148,163,184,0.22)' />
+<text x='136' y='824' fill='#e2e8f0' font-family='Segoe UI, Arial, sans-serif' font-size='88' font-weight='700' letter-spacing='0.8'>{safe_city}</text>
+<text x='136' y='892' fill='rgba(226,232,240,0.86)' font-family='Segoe UI, Arial, sans-serif' font-size='33'>Live Weather Cover Art</text>
+<text x='1466' y='144' text-anchor='end' fill='rgba(226,232,240,0.62)' font-family='Segoe UI, Arial, sans-serif' font-size='140' font-weight='700'>{initials}</text>
+</svg>"""
 
 
 def format_local_time(timestamp_value, tz_offset_seconds, fmt):
@@ -464,6 +551,64 @@ def load_city_bundle_for_view(city):
     return weather_bundle, error
 
 
+def as_float(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def compute_city_insights(cards):
+    ranked = []
+    for card in cards:
+        temp = as_float(card.get("temp"))
+        humidity = as_float(card.get("humidity"))
+        wind_speed = as_float(card.get("wind_speed"))
+        if temp is None or humidity is None or wind_speed is None:
+            continue
+
+        score = 100 - abs(temp - 21) * 2.2 - humidity * 0.18 - wind_speed * 1.7
+        description = str(card.get("description", "")).lower()
+        if "rain" in description or "storm" in description or "snow" in description:
+            score -= 8
+        if "clear" in description or "sun" in description:
+            score += 4
+
+        ranked.append(
+            {
+                **card,
+                "comfort_score": max(0, min(100, round(score))),
+                "temp_value": temp,
+                "wind_value": wind_speed,
+                "humidity_value": humidity,
+            }
+        )
+
+    ranked.sort(key=lambda item: item["comfort_score"], reverse=True)
+    warmest = sorted(ranked, key=lambda item: item["temp_value"], reverse=True)[:5]
+    breeziest = sorted(ranked, key=lambda item: item["wind_value"], reverse=True)[:5]
+    driest = sorted(ranked, key=lambda item: item["humidity_value"])[:5]
+
+    return {
+        "ranked": ranked,
+        "top_three": ranked[:3],
+        "warmest": warmest,
+        "breeziest": breeziest,
+        "driest": driest,
+    }
+
+
+@app.route("/city-image/<path:city_slug>")
+def city_image(city_slug):
+    city_name = unquote_plus(city_slug).strip() or "City"
+    svg = build_city_image_svg(city_name)
+    return Response(
+        svg,
+        mimetype="image/svg+xml",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
+
+
 @app.route("/")
 def home():
     city = (request.args.get("city") or "London").strip()
@@ -546,6 +691,29 @@ def cities_page():
         error=error,
         city_filter=city_filter,
         city=city_filter,
+    )
+
+
+@app.route("/insights")
+def insights_page():
+    error = None
+    cards = []
+    insights = {"ranked": [], "top_three": [], "warmest": [], "breeziest": [], "driest": []}
+
+    if not API_KEY:
+        error = "Missing API key. Set OPENWEATHER_API_KEY before starting Flask."
+    else:
+        try:
+            cards = get_saved_city_snapshots(SAVED_CITIES)
+            insights = compute_city_insights(cards)
+        except requests.exceptions.RequestException:
+            error = "Network issue while loading city insights."
+
+    return render_template(
+        "insights.html",
+        error=error,
+        city="",
+        insights=insights,
     )
 
 

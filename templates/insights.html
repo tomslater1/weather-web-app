@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Weather Insights{% endblock %}
+{% block content %}
+<section class="glass reveal block">
+  <div class="block-head city-head">
+    <div>
+      <h2>Weather Insights</h2>
+      <p class="meta">Comfort rankings and quick city picks from your live weather feed.</p>
+    </div>
+  </div>
+
+  {% if insights.ranked %}
+    <div class="insight-kpis">
+      <article class="glass stat-card">
+        <div class="k">Best Comfort</div>
+        <div class="v">{{ insights.ranked[0].city }}</div>
+        <div class="meta">Score {{ insights.ranked[0].comfort_score }}/100</div>
+      </article>
+      <article class="glass stat-card">
+        <div class="k">Warmest City</div>
+        <div class="v">{{ insights.warmest[0].city }}</div>
+        <div class="meta">{{ insights.warmest[0].temp }}&deg;C</div>
+      </article>
+      <article class="glass stat-card">
+        <div class="k">Lowest Humidity</div>
+        <div class="v">{{ insights.driest[0].city }}</div>
+        <div class="meta">{{ insights.driest[0].humidity }}%</div>
+      </article>
+    </div>
+
+    <div class="block-head">
+      <h3>Top Comfort Cities Right Now</h3>
+    </div>
+    <div class="city-grid world-grid insight-grid">
+      {% for card in insights.top_three %}
+        <article class="city-card media-shell" style="--delay: {{ loop.index0 * 90 }}ms">
+          <img class="lazy-image" src="{{ card.image_url }}" alt="{{ card.city }} city image" loading="lazy">
+          <div class="city-card-overlay"></div>
+          <div class="city-card-content">
+            <div>
+              <h4>{{ card.city }}</h4>
+              <p>{{ card.country }} | {{ card.description }}</p>
+            </div>
+            <div class="city-card-temp">{{ card.temp }}&deg;C</div>
+            <div class="meta">Comfort Score {{ card.comfort_score }}/100</div>
+            <a class="ghost-btn" href="{{ url_for('city_detail', city=card.city) }}">Open Forecast</a>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+
+    <div class="insight-columns">
+      <article class="glass nested insight-list">
+        <h3>Warmest Cities</h3>
+        {% for item in insights.warmest %}
+          <div class="insight-row">
+            <span>{{ item.city }}</span>
+            <strong>{{ item.temp }}&deg;C</strong>
+          </div>
+        {% endfor %}
+      </article>
+      <article class="glass nested insight-list">
+        <h3>Breeziest Cities</h3>
+        {% for item in insights.breeziest %}
+          <div class="insight-row">
+            <span>{{ item.city }}</span>
+            <strong>{{ item.wind_speed }} m/s</strong>
+          </div>
+        {% endfor %}
+      </article>
+      <article class="glass nested insight-list">
+        <h3>Lowest Humidity</h3>
+        {% for item in insights.driest %}
+          <div class="insight-row">
+            <span>{{ item.city }}</span>
+            <strong>{{ item.humidity }}%</strong>
+          </div>
+        {% endfor %}
+      </article>
+    </div>
+  {% else %}
+    <p class="meta">Insights will appear once city data is available.</p>
+  {% endif %}
+</section>
+{% endblock %}

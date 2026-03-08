@@ -31,13 +31,26 @@ function setupMediaShells() {
     }
 
     const markReady = () => shell.classList.add("ready");
+    const fallbackImage = image.dataset.fallback || "/city-image/City";
+
+    image.addEventListener(
+      "error",
+      () => {
+        if (image.src.includes("/city-image/")) {
+          markReady();
+          return;
+        }
+        image.src = fallbackImage;
+      },
+      { once: true }
+    );
+
     if (image.complete && image.naturalWidth > 0) {
       markReady();
       return;
     }
 
     image.addEventListener("load", markReady, { once: true });
-    image.addEventListener("error", markReady, { once: true });
   });
 }
 

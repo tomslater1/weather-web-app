@@ -68,7 +68,7 @@
     <h3>Featured Cities</h3>
     <a href="{{ url_for('cities_page') }}">View all cities</a>
   </div>
-  <div class="city-grid">
+  <div class="city-grid world-grid">
     {% for card in spotlight_cards %}
       <article class="city-card media-shell" style="--delay: {{ loop.index0 * 70 }}ms">
         <img class="lazy-image" src="{{ card.image_url }}" alt="{{ card.city }} city image" loading="lazy">
