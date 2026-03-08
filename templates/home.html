@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Weather Dashboard{% endblock %}
+{% block content %}
+<section class="hero-panel glass reveal">
+  <div class="hero-copy">
+    <p class="eyebrow">Live Forecast Interface</p>
+    <h1>Dark glass weather dashboard built for fast city switching.</h1>
+    <p class="lead">Search any city and view detailed conditions, then compare major cities on a separate page.</p>
+    <form class="inline-search" method="get" action="{{ url_for('city_detail') }}">
+      <input name="city" type="text" placeholder="Search city e.g. Barcelona" value="{{ city }}">
+      <button type="submit">Open City</button>
+    </form>
+  </div>
+  <div class="hero-image media-shell">
+    {% if weather %}
+      <img class="lazy-image" src="{{ weather.image_url }}" alt="{{ weather.location }} city image" loading="eager">
+      <div class="hero-overlay">
+        <div class="pill">{{ weather.country_code }}</div>
+        <h2>{{ weather.location }}</h2>
+        <div class="temp-line">{{ weather.temp }}&deg;C <span>{{ weather.description }}</span></div>
+      </div>
+    {% else %}
+      <div class="image-placeholder">Weather preview unavailable</div>
+    {% endif %}
+  </div>
+</section>
+
+{% if weather %}
+<section class="stats-grid reveal">
+  <article class="glass stat-card">
+    <div class="k">Feels Like</div>
+    <div class="v">{{ weather.feels_like }}&deg;C</div>
+  </article>
+  <article class="glass stat-card">
+    <div class="k">Humidity</div>
+    <div class="v">{{ weather.humidity }}%</div>
+  </article>
+  <article class="glass stat-card">
+    <div class="k">Wind</div>
+    <div class="v">{{ weather.wind_speed }} m/s</div>
+  </article>
+  <article class="glass stat-card">
+    <div class="k">Air Quality</div>
+    <div class="v">{{ weather.aqi_label }}</div>
+  </article>
+</section>
+
+<section class="glass reveal block">
+  <div class="block-head">
+    <h3>Next Forecast Blocks</h3>
+    <a href="{{ url_for('city_detail', city=city) }}">Open full detail</a>
+  </div>
+  <div class="forecast-row">
+    {% for item in forecast %}
+      <article class="forecast-card" style="--delay: {{ loop.index0 * 60 }}ms">
+        <div class="time">{{ item.time }}</div>
+        {% if item.icon_url %}<img src="{{ item.icon_url }}" alt="{{ item.description }} icon">{% endif %}
+        <div class="temp">{{ item.temp }}&deg;C</div>
+        <div class="desc">{{ item.description }}</div>
+      </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="glass reveal block">
+  <div class="block-head">
+    <h3>Featured Cities</h3>
+    <a href="{{ url_for('cities_page') }}">View all cities</a>
+  </div>
+  <div class="city-grid">
+    {% for card in spotlight_cards %}
+      <article class="city-card media-shell" style="--delay: {{ loop.index0 * 70 }}ms">
+        <img class="lazy-image" src="{{ card.image_url }}" alt="{{ card.city }} city image" loading="lazy">
+        <div class="city-card-overlay"></div>
+        <div class="city-card-content">
+          <div>
+            <h4>{{ card.city }}</h4>
+            <p>{{ card.country }} · {{ card.description }}</p>
+          </div>
+          <div class="city-card-temp">{{ card.temp }}&deg;C</div>
+          <a class="ghost-btn" href="{{ url_for('city_detail', city=card.city) }}">Details</a>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

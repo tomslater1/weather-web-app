@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}City Detail{% endblock %}
+{% block content %}
+<section class="glass reveal block">
+  <div class="block-head city-head">
+    <div>
+      <h2>City Detail</h2>
+      <p class="meta">Current conditions and 5-day outlook</p>
+    </div>
+    <form class="inline-search" method="post" action="{{ url_for('city_detail') }}">
+      <input name="city" type="text" placeholder="Search another city" value="{{ city }}">
+      <button type="submit">Load</button>
+    </form>
+  </div>
+
+  {% if weather %}
+  <div class="detail-top">
+    <article class="glass detail-main media-shell">
+      <img class="detail-bg lazy-image" src="{{ weather.image_url }}" alt="{{ weather.location }} city image" loading="eager">
+      <div class="detail-main-overlay"></div>
+      <div class="detail-main-content">
+        <p class="meta">{{ weather.local_time }} · {{ weather.timezone_name }}</p>
+        <h3>{{ weather.location }}</h3>
+        <div class="detail-temp">{{ weather.temp }}&deg;C</div>
+        <p>{{ weather.description }} · Feels like {{ weather.feels_like }}&deg;C</p>
+      </div>
+    </article>
+
+    <aside class="detail-metrics">
+      <article class="glass mini">
+        <div class="k">Humidity</div>
+        <div class="v">{{ weather.humidity }}%</div>
+      </article>
+      <article class="glass mini">
+        <div class="k">Pressure</div>
+        <div class="v">{{ weather.pressure }} hPa</div>
+      </article>
+      <article class="glass mini">
+        <div class="k">Visibility</div>
+        <div class="v">{{ weather.visibility_km }} km</div>
+      </article>
+      <article class="glass mini">
+        <div class="k">Wind</div>
+        <div class="v">{{ weather.wind_speed }} m/s</div>
+      </article>
+      <article class="glass mini">
+        <div class="k">Sunrise</div>
+        <div class="v">{{ weather.sunrise }}</div>
+      </article>
+      <article class="glass mini">
+        <div class="k">Sunset</div>
+        <div class="v">{{ weather.sunset }}</div>
+      </article>
+    </aside>
+  </div>
+
+  <section class="glass block nested">
+    <h3>Hourly Forecast</h3>
+    <div class="forecast-row">
+      {% for item in forecast %}
+      <article class="forecast-card" style="--delay: {{ loop.index0 * 50 }}ms">
+        <div class="time">{{ item.time }}</div>
+        {% if item.icon_url %}<img src="{{ item.icon_url }}" alt="{{ item.description }} icon">{% endif %}
+        <div class="temp">{{ item.temp }}&deg;C</div>
+        <div class="desc">{{ item.description }}</div>
+        <div class="meta">Rain {{ item.pop }}% · Humidity {{ item.humidity }}%</div>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="glass block nested">
+    <h3>5 Day Outlook</h3>
+    <div class="daily-list">
+      {% for day in daily_summary %}
+      <article class="daily-row">
+        <div class="day-left">
+          {% if day.icon_url %}<img src="{{ day.icon_url }}" alt="{{ day.description }} icon">{% endif %}
+          <div>
+            <div class="day-name">{{ day.day_name }}</div>
+            <div class="meta">{{ day.description }}</div>
+          </div>
+        </div>
+        <div class="day-right">{{ day.temp_max }}&deg; / {{ day.temp_min }}&deg;</div>
+        <div class="meta">Rain {{ day.pop }}%</div>
+        <div class="meta">Wind {{ day.wind_speed }} m/s</div>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+  {% else %}
+  <article class="glass nested" style="padding: 14px; margin-top: 10px;">
+    <p class="meta" style="margin: 0;">Search for a city to load detailed weather, hourly blocks, and a 5-day outlook.</p>
+  </article>
+  {% endif %}
+</section>
+{% endblock %}

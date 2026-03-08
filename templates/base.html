@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Weather Glass{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body data-route="{{ request.path }}">
+  <div class="bg-layer"></div>
+  <div class="bg-glow bg-glow-a"></div>
+  <div class="bg-glow bg-glow-b"></div>
+
+  <header class="site-header glass reveal">
+    <a class="brand" href="{{ url_for('home') }}">
+      <span class="brand-dot"></span>
+      <span>WeatherGlass</span>
+    </a>
+    <nav class="main-nav">
+      <a href="{{ url_for('home') }}" class="{% if request.path == '/' %}active{% endif %}">Dashboard</a>
+      <a href="{{ url_for('city_detail') }}" class="{% if request.path == '/city' %}active{% endif %}">City Detail</a>
+      <a href="{{ url_for('cities_page') }}" class="{% if request.path == '/cities' %}active{% endif %}">World Cities</a>
+    </nav>
+    <form class="quick-search" method="get" action="{{ url_for('city_detail') }}">
+      <input name="city" type="text" placeholder="Find a city" value="{{ city if city else '' }}">
+      <button type="submit">View</button>
+    </form>
+  </header>
+
+  <main class="container">
+    <div id="page-content" class="page-content">
+      {% if error %}
+        <section class="glass error reveal">{{ error }}</section>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+  <div id="route-loader" class="route-loader" aria-hidden="true">
+    <div class="loader-shell loader-home">
+      <div class="loader-line shimmer w-40"></div>
+      <div class="loader-line shimmer w-70"></div>
+      <div class="loader-block shimmer h-240"></div>
+      <div class="loader-grid four">
+        <div class="loader-card shimmer"></div>
+        <div class="loader-card shimmer"></div>
+        <div class="loader-card shimmer"></div>
+        <div class="loader-card shimmer"></div>
+      </div>
+    </div>
+
+    <div class="loader-shell loader-city">
+      <div class="loader-line shimmer w-38"></div>
+      <div class="loader-block shimmer h-280"></div>
+      <div class="loader-grid two">
+        <div class="loader-card shimmer"></div>
+        <div class="loader-card shimmer"></div>
+      </div>
+      <div class="loader-list">
+        <div class="loader-row shimmer"></div>
+        <div class="loader-row shimmer"></div>
+        <div class="loader-row shimmer"></div>
+      </div>
+    </div>
+
+    <div class="loader-shell loader-cities">
+      <div class="loader-line shimmer w-36"></div>
+      <div class="loader-grid three">
+        <div class="loader-tile shimmer"></div>
+        <div class="loader-tile shimmer"></div>
+        <div class="loader-tile shimmer"></div>
+        <div class="loader-tile shimmer"></div>
+        <div class="loader-tile shimmer"></div>
+        <div class="loader-tile shimmer"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

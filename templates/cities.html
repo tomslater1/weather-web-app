@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}World Cities{% endblock %}
+{% block content %}
+<section class="glass reveal block">
+  <div class="block-head city-head">
+    <div>
+      <h2>World Cities</h2>
+      <p class="meta">Live snapshot cards shown together on one page</p>
+    </div>
+    <form class="inline-search" method="get" action="{{ url_for('cities_page') }}">
+      <input name="city" type="text" placeholder="Add a city to this view" value="{{ city_filter }}">
+      <button type="submit">Add</button>
+    </form>
+  </div>
+
+  <div class="city-grid large-grid">
+    {% for card in cards %}
+      <article class="city-card media-shell" style="--delay: {{ loop.index0 * 70 }}ms">
+        <img class="lazy-image" src="{{ card.image_url }}" alt="{{ card.city }} city image" loading="lazy">
+        <div class="city-card-overlay"></div>
+        <div class="city-card-content">
+          <div>
+            <h4>{{ card.city }}</h4>
+            <p>{{ card.country }} · {{ card.description }}</p>
+          </div>
+          <div class="city-card-temp">{{ card.temp }}&deg;C</div>
+          <div class="meta">H {{ card.temp_max }}&deg; · L {{ card.temp_min }}&deg; · Humidity {{ card.humidity }}%</div>
+          <div class="meta">Wind {{ card.wind_speed }} m/s · Updated {{ card.updated }}</div>
+          <a class="ghost-btn" href="{{ url_for('city_detail', city=card.city) }}">Open Forecast</a>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
