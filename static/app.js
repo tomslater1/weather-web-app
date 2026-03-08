@@ -1,5 +1,19 @@
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const leaveDelayMs = prefersReducedMotion ? 0 : 220;
+const INLINE_FALLBACK =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(
+    "<svg xmlns='http://www.w3.org/2000/svg' width='1200' height='800' viewBox='0 0 1200 800'>" +
+      "<defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>" +
+      "<stop offset='0%' stop-color='#0f172a'/>" +
+      "<stop offset='55%' stop-color='#1d4ed8'/>" +
+      "<stop offset='100%' stop-color='#0ea5a6'/>" +
+      "</linearGradient></defs>" +
+      "<rect width='1200' height='800' fill='url(#g)'/>" +
+      "<rect x='80' y='580' width='1040' height='140' rx='20' fill='rgba(2,6,23,0.55)'/>" +
+      "<text x='120' y='665' fill='#e2e8f0' font-family='Segoe UI, Arial, sans-serif' font-size='64' font-weight='700'>City Weather</text>" +
+    "</svg>"
+  );
 
 function setupRevealObserver() {
   const revealNodes = document.querySelectorAll(".reveal");
@@ -33,17 +47,18 @@ function setupMediaShells() {
     const markReady = () => shell.classList.add("ready");
     const fallbackImage = image.dataset.fallback || "/city-image/City";
 
-    image.addEventListener(
-      "error",
-      () => {
-        if (image.src.includes("/city-image/")) {
-          markReady();
-          return;
-        }
-        image.src = fallbackImage;
-      },
-      { once: true }
-    );
+    const onError = () => {
+      const src = image.getAttribute("src") || "";
+      if (!image.dataset.fallbackTried) {
+        image.dataset.fallbackTried = "1";
+        image.src = src.includes("/city-image/") ? INLINE_FALLBACK : fallbackImage;
+        return;
+      }
+
+      // Last-resort: hide the broken img icon and keep glass background visible.
+      image.style.display = "none";
+      markReady();
+    };
 
     if (image.complete && image.naturalWidth > 0) {
       markReady();
@@ -51,6 +66,7 @@ function setupMediaShells() {
     }
 
     image.addEventListener("load", markReady, { once: true });
+    image.addEventListener("error", onError);
   });
 }
 
