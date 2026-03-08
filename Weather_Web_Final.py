@@ -63,6 +63,7 @@ PAGE_TEMPLATE = """
         .container {
             width: min(1280px, calc(100% - 32px));
             margin: 28px auto;
+            padding-bottom: 24px;
         }
 
         .page-grid {
@@ -78,11 +79,16 @@ PAGE_TEMPLATE = """
             padding: 20px;
             backdrop-filter: blur(10px);
             box-shadow: var(--shadow);
+            overflow: hidden;
         }
 
         .sidebar-sticky {
             position: sticky;
             top: 20px;
+        }
+
+        .mobile-search-bar {
+            display: none;
         }
 
         .brand {
@@ -149,6 +155,10 @@ PAGE_TEMPLATE = """
             margin-top: 14px;
         }
 
+        .quick-list form {
+            margin: 0;
+        }
+
         .quick-button {
             width: 100%;
             border-radius: 12px;
@@ -176,6 +186,10 @@ PAGE_TEMPLATE = """
         .content-grid {
             display: grid;
             gap: 18px;
+        }
+
+        .desktop-sidebar {
+            display: block;
         }
 
         .top-grid {
@@ -314,6 +328,15 @@ PAGE_TEMPLATE = """
             padding: 14px;
         }
 
+        .hourly-grid::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .hourly-grid::-webkit-scrollbar-thumb {
+            background: rgba(136, 170, 255, 0.22);
+            border-radius: 999px;
+        }
+
         .hour-time {
             color: var(--muted);
             font-size: 0.9rem;
@@ -407,38 +430,208 @@ PAGE_TEMPLATE = """
         }
 
         @media (max-width: 760px) {
+            .container {
+                width: min(100%, calc(100% - 16px));
+                margin: 8px auto;
+                padding-bottom: 16px;
+            }
+
+            .page-grid,
+            .top-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .desktop-sidebar {
+                display: none;
+            }
+
+            .mobile-search-bar {
+                display: block;
+                margin-bottom: 10px;
+            }
+
+            .panel {
+                border-radius: 18px;
+                padding: 14px;
+            }
+
+            .brand {
+                margin-bottom: 10px;
+            }
+
+            .brand h1 {
+                font-size: 1.35rem;
+                margin-bottom: 4px;
+            }
+
+            .brand .subtle,
+            .eyebrow,
+            .timestamp,
+            .condition,
+            .range-line,
+            .metric .tiny,
+            .hour-desc,
+            .hour-meta,
+            .day-desc {
+                font-size: 0.82rem;
+            }
+
+            .summary-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+                margin-bottom: 12px;
+            }
+
+            .hero-weather {
+                grid-template-columns: 64px 1fr;
+                gap: 12px;
+                margin-bottom: 12px;
+                align-items: center;
+            }
+
+            .weather-icon {
+                width: 64px;
+                height: 64px;
+            }
+
+            .location {
+                font-size: 1.45rem;
+            }
+
+            .temperature {
+                font-size: clamp(2.5rem, 12vw, 3.7rem);
+            }
+
             .metrics-grid,
             .mini-grid {
-                grid-template-columns: repeat(2, 1fr);
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 8px;
+            }
+
+            .metric {
+                min-height: 72px;
+                padding: 10px;
+                border-radius: 14px;
+            }
+
+            .metric .name {
+                margin-bottom: 6px;
+                font-size: 0.8rem;
+            }
+
+            .metric .value {
+                font-size: 1rem;
+            }
+
+            .hourly-grid {
+                display: grid;
+                grid-auto-flow: column;
+                grid-auto-columns: minmax(132px, 68vw);
+                grid-template-columns: none;
+                overflow-x: auto;
+                overflow-y: hidden;
+                padding-bottom: 4px;
+                scroll-snap-type: x proximity;
+                gap: 8px;
+            }
+
+            .hour-card {
+                scroll-snap-align: start;
+                padding: 12px;
+                border-radius: 14px;
+            }
+
+            .hour-time {
+                margin-bottom: 8px;
+                font-size: 0.82rem;
+            }
+
+            .hour-icon {
+                width: 40px;
+                height: 40px;
+                margin-bottom: 6px;
+            }
+
+            .hour-temp {
+                font-size: 1rem;
             }
 
             .day-row {
                 grid-template-columns: 1fr;
                 text-align: left;
+                gap: 6px;
+                padding: 12px;
+                border-radius: 14px;
+            }
+
+            .day-icon {
+                width: 36px;
+                height: 36px;
             }
 
             .right {
                 text-align: left;
             }
 
-            .hero-weather {
-                grid-template-columns: 1fr;
+            .section-title {
+                margin-bottom: 10px;
+                font-size: 0.95rem;
             }
         }
 
         @media (max-width: 520px) {
-            .metrics-grid,
-            .mini-grid,
+            .input, .select, .button {
+                padding: 12px 11px;
+                font-size: 0.95rem;
+                margin-bottom: 10px;
+            }
+
             .quick-list {
-                grid-template-columns: 1fr;
+                display: none;
+            }
+
+            .metrics-grid,
+            .mini-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .hero-weather {
+                grid-template-columns: 56px 1fr;
+                gap: 10px;
+            }
+
+            .weather-icon {
+                width: 56px;
+                height: 56px;
+            }
+
+            .location {
+                font-size: 1.3rem;
+            }
+
+            .temperature {
+                font-size: clamp(2.25rem, 11vw, 3.2rem);
             }
         }
     </style>
 </head>
 <body>
     <main class="container">
+        <section class="mobile-search-bar panel">
+            <form method="post">
+                <label class="label" for="mobile-city">City</label>
+                <input class="input" id="mobile-city" name="city" type="text" placeholder="Enter a city" value="{{ city }}">
+                <button class="button" type="submit">Search</button>
+            </form>
+            {% if error %}
+                <div class="error">{{ error }}</div>
+            {% endif %}
+        </section>
+
         <section class="page-grid">
-            <aside class="panel sidebar-sticky">
+            <aside class="panel sidebar-sticky desktop-sidebar">
                 <div class="brand">
                     <h1>Weather</h1>
                     <p class="subtle">Live conditions and forecast</p>
