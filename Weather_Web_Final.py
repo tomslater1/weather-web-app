@@ -1,5 +1,7 @@
 import os
+import re
 import time
+import unicodedata
 from datetime import datetime, timedelta, timezone
 from urllib.parse import quote_plus
 
@@ -27,10 +29,20 @@ SAVED_CITIES = [
     "Singapore",
     "Sydney",
     "Dubai",
+    "Amsterdam",
+    "Berlin",
+    "Rome",
+    "Madrid",
+    "Los Angeles",
+    "Toronto",
+    "San Francisco",
+    "Hong Kong",
+    "Seoul",
+    "Cape Town",
 ]
 
 CITY_BACKGROUNDS = {
-    "Manchester": "https://images.unsplash.com/photo-1529421306624-54a91fd114e3?auto=format&fit=crop&w=1600&q=80",
+    "Manchester": "https://source.unsplash.com/1600x1000/?manchester,city,skyline&sig=11",
     "London": "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=1600&q=80",
     "Edinburgh": "https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?auto=format&fit=crop&w=1600&q=80",
     "Montreal": "https://images.unsplash.com/photo-1519178614-68673b201f36?auto=format&fit=crop&w=1600&q=80",
@@ -42,6 +54,16 @@ CITY_BACKGROUNDS = {
     "Singapore": "https://images.unsplash.com/photo-1525625293386-3f8f99389edd?auto=format&fit=crop&w=1600&q=80",
     "Sydney": "https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?auto=format&fit=crop&w=1600&q=80",
     "Dubai": "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1600&q=80",
+    "Amsterdam": "https://source.unsplash.com/1600x1000/?amsterdam,city,canal&sig=12",
+    "Berlin": "https://source.unsplash.com/1600x1000/?berlin,city,skyline&sig=13",
+    "Rome": "https://source.unsplash.com/1600x1000/?rome,city,italy&sig=14",
+    "Madrid": "https://source.unsplash.com/1600x1000/?madrid,city,spain&sig=15",
+    "Los Angeles": "https://source.unsplash.com/1600x1000/?los-angeles,city,skyline&sig=16",
+    "Toronto": "https://source.unsplash.com/1600x1000/?toronto,city,skyline&sig=17",
+    "San Francisco": "https://source.unsplash.com/1600x1000/?san-francisco,city,bridge&sig=18",
+    "Hong Kong": "https://source.unsplash.com/1600x1000/?hong-kong,city,skyline&sig=19",
+    "Seoul": "https://source.unsplash.com/1600x1000/?seoul,city,night&sig=20",
+    "Cape Town": "https://source.unsplash.com/1600x1000/?cape-town,city,mountain&sig=21",
 }
 
 AQI_LABELS = {
@@ -50,6 +72,27 @@ AQI_LABELS = {
     3: "Moderate",
     4: "Poor",
     5: "Very Poor",
+}
+
+DESCRIPTION_MAP = {
+    "clear sky": "Clear Sky",
+    "few clouds": "Partly Cloudy",
+    "scattered clouds": "Scattered Clouds",
+    "broken clouds": "Broken Clouds",
+    "overcast clouds": "Overcast",
+    "mist": "Misty",
+    "haze": "Hazy",
+    "fog": "Foggy",
+    "smoke": "Smoky",
+    "light rain": "Light Rain",
+    "moderate rain": "Rain",
+    "heavy intensity rain": "Heavy Rain",
+    "very heavy rain": "Very Heavy Rain",
+    "extreme rain": "Extreme Rain",
+    "light snow": "Light Snow",
+    "snow": "Snow",
+    "heavy snow": "Heavy Snow",
+    "thunderstorm": "Thunderstorm",
 }
 
 CITY_CACHE = {}
@@ -85,6 +128,32 @@ def format_local_time(timestamp_value, tz_offset_seconds, fmt):
         return "--"
     tz_info = timezone(timedelta(seconds=tz_offset_seconds))
     return datetime.fromtimestamp(timestamp_value, tz=tz_info).strftime(fmt)
+
+
+def clean_weather_description(raw_description):
+    if not raw_description:
+        return "Unknown"
+
+    text = str(raw_description).strip()
+    if not text:
+        return "Unknown"
+
+    if any(marker in text for marker in ("Ã", "Â", "â")):
+        try:
+            text = text.encode("latin1").decode("utf-8")
+        except UnicodeError:
+            pass
+
+    text = unicodedata.normalize("NFKC", text).replace("\ufffd", " ").strip()
+    lowered = text.lower()
+    if lowered in DESCRIPTION_MAP:
+        return DESCRIPTION_MAP[lowered]
+
+    cleaned = re.sub(r"[^A-Za-z0-9\s\-/,.()]", " ", text)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    if not cleaned:
+        return "Unknown"
+    return cleaned.title()
 
 
 def fetch_json(url, params, timeout=8):
@@ -188,7 +257,7 @@ def build_weather_context(current_data, coordinate_data, air_data):
     return {
         "location": location,
         "country_code": country_code,
-        "local_time": format_local_time(current_data.get("dt"), tz_offset, "%a %d %b %Y · %H:%M"),
+        "local_time": format_local_time(current_data.get("dt"), tz_offset, "%a %d %b %Y | %H:%M"),
         "temp": safe_round(main_data.get("temp")),
         "feels_like": safe_round(main_data.get("feels_like")),
         "temp_min": safe_round(main_data.get("temp_min")),
@@ -206,7 +275,7 @@ def build_weather_context(current_data, coordinate_data, air_data):
         "sunset": format_local_time(sys_data.get("sunset"), tz_offset, "%H:%M"),
         "rain_1h": safe_round(rain_data.get("1h"), 1),
         "snow_1h": safe_round(snow_data.get("1h"), 1),
-        "description": weather_entry.get("description", "Unknown").title(),
+        "description": clean_weather_description(weather_entry.get("description")),
         "icon_url": icon_url(weather_entry.get("icon")),
         "lat": safe_round(current_data.get("coord", {}).get("lat"), 2),
         "lon": safe_round(current_data.get("coord", {}).get("lon"), 2),
@@ -234,7 +303,7 @@ def build_hourly_context(forecast_data, tz_offset):
                 "time": format_local_time(entry.get("dt"), tz_offset, "%a %H:%M"),
                 "temp": safe_round(main_data.get("temp")),
                 "feels_like": safe_round(main_data.get("feels_like")),
-                "description": weather_entry.get("description", "Unknown").title(),
+                "description": clean_weather_description(weather_entry.get("description")),
                 "icon_url": icon_url(weather_entry.get("icon")),
                 "pop": safe_round((entry.get("pop") or 0) * 100),
                 "wind_speed": safe_round(wind_data.get("speed"), 1),
@@ -266,7 +335,7 @@ def build_daily_summary(full_forecast_data, tz_offset):
         summaries.append(
             {
                 "day_name": format_local_time(midday_entry.get("dt"), tz_offset, "%A"),
-                "description": weather_entry.get("description", "Unknown").title(),
+                "description": clean_weather_description(weather_entry.get("description")),
                 "icon_url": icon_url(weather_entry.get("icon")),
                 "temp_min": safe_round(min(temps) if temps else None),
                 "temp_max": safe_round(max(temps) if temps else None),
@@ -306,7 +375,7 @@ def get_city_snapshot(city_name):
     snapshot = {
         "city": current_data.get("name", city_name),
         "country": current_data.get("sys", {}).get("country", "--"),
-        "description": weather_entry.get("description", "Unknown").title(),
+        "description": clean_weather_description(weather_entry.get("description")),
         "temp": safe_round(main_data.get("temp")),
         "temp_min": safe_round(main_data.get("temp_min")),
         "temp_max": safe_round(main_data.get("temp_max")),

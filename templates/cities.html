@@ -13,7 +13,7 @@
     </form>
   </div>
 
-  <div class="city-grid large-grid">
+  <div class="city-grid large-grid world-grid">
     {% for card in cards %}
       <article class="city-card media-shell" style="--delay: {{ loop.index0 * 70 }}ms">
         <img class="lazy-image" src="{{ card.image_url }}" alt="{{ card.city }} city image" loading="lazy">
@@ -21,11 +21,11 @@
         <div class="city-card-content">
           <div>
             <h4>{{ card.city }}</h4>
-            <p>{{ card.country }} · {{ card.description }}</p>
+            <p>{{ card.country }} | {{ card.description }}</p>
           </div>
           <div class="city-card-temp">{{ card.temp }}&deg;C</div>
-          <div class="meta">H {{ card.temp_max }}&deg; · L {{ card.temp_min }}&deg; · Humidity {{ card.humidity }}%</div>
-          <div class="meta">Wind {{ card.wind_speed }} m/s · Updated {{ card.updated }}</div>
+          <div class="meta">H {{ card.temp_max }}&deg; | L {{ card.temp_min }}&deg; | Humidity {{ card.humidity }}%</div>
+          <div class="meta">Wind {{ card.wind_speed }} m/s | Updated {{ card.updated }}</div>
           <a class="ghost-btn" href="{{ url_for('city_detail', city=card.city) }}">Open Forecast</a>
         </div>
       </article>

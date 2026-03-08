@@ -19,10 +19,10 @@
       <img class="detail-bg lazy-image" src="{{ weather.image_url }}" alt="{{ weather.location }} city image" loading="eager">
       <div class="detail-main-overlay"></div>
       <div class="detail-main-content">
-        <p class="meta">{{ weather.local_time }} · {{ weather.timezone_name }}</p>
+        <p class="meta">{{ weather.local_time }} | {{ weather.timezone_name }}</p>
         <h3>{{ weather.location }}</h3>
         <div class="detail-temp">{{ weather.temp }}&deg;C</div>
-        <p>{{ weather.description }} · Feels like {{ weather.feels_like }}&deg;C</p>
+        <p>{{ weather.description }} | Feels like {{ weather.feels_like }}&deg;C</p>
       </div>
     </article>
 
@@ -63,7 +63,7 @@
         {% if item.icon_url %}<img src="{{ item.icon_url }}" alt="{{ item.description }} icon">{% endif %}
         <div class="temp">{{ item.temp }}&deg;C</div>
         <div class="desc">{{ item.description }}</div>
-        <div class="meta">Rain {{ item.pop }}% · Humidity {{ item.humidity }}%</div>
+        <div class="meta">Rain {{ item.pop }}% | Humidity {{ item.humidity }}%</div>
       </article>
       {% endfor %}
     </div>

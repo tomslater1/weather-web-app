@@ -23,7 +23,7 @@ body {
 }
 
 body {
-  font-family: "Manrope", "Segoe UI", sans-serif;
+  font-family: "Plus Jakarta Sans", "Segoe UI", sans-serif;
   color: var(--text);
   background:
     radial-gradient(circle at 10% 20%, rgba(12, 75, 82, 0.5), transparent 40%),
@@ -54,7 +54,7 @@ h4,
 .brand,
 .main-nav a,
 button {
-  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  font-family: "Sora", "Segoe UI", sans-serif;
 }
 
 a {
@@ -552,6 +552,30 @@ body:not([data-route="/city"]):not([data-route="/cities"]):not([data-route="/"])
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.world-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.world-grid .city-card {
+  min-height: 0;
+  aspect-ratio: 1 / 1;
+}
+
+.world-grid .city-card-content {
+  gap: 4px;
+}
+
+.world-grid .city-card-temp {
+  font-size: 1.45rem;
+}
+
+.world-grid .city-card-content p,
+.world-grid .city-card-content .meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .city-card {
   position: relative;
   min-height: 245px;
@@ -754,7 +778,8 @@ body:not([data-route="/city"]):not([data-route="/cities"]):not([data-route="/"])
   }
 
   .city-grid,
-  .large-grid {
+  .large-grid,
+  .world-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -802,6 +827,7 @@ body:not([data-route="/city"]):not([data-route="/cities"]):not([data-route="/"])
 
   .city-grid,
   .large-grid,
+  .world-grid,
   .stats-grid,
   .detail-metrics,
   .daily-row {

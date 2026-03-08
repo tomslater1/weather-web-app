@@ -76,7 +76,7 @@
         <div class="city-card-content">
           <div>
             <h4>{{ card.city }}</h4>
-            <p>{{ card.country }} · {{ card.description }}</p>
+            <p>{{ card.country }} | {{ card.description }}</p>
           </div>
           <div class="city-card-temp">{{ card.temp }}&deg;C</div>
           <a class="ghost-btn" href="{{ url_for('city_detail', city=card.city) }}">Details</a>
