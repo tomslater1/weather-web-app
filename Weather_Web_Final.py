@@ -1,10 +1,10 @@
-
-
 import os
+import time
 from datetime import datetime, timedelta, timezone
+from urllib.parse import quote_plus
 
 import requests
-from flask import Flask, render_template_string, request, url_for
+from flask import Flask, redirect, render_template, request, url_for
 
 app = Flask(__name__)
 
@@ -30,30 +30,18 @@ SAVED_CITIES = [
 ]
 
 CITY_BACKGROUNDS = {
-    "Manchester": "https://images.unsplash.com/photo-1529421306624-54a91fd114e3?auto=format&fit=crop&w=1200&q=80",
-    "London": "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=1200&q=80",
-    "Edinburgh": "https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?auto=format&fit=crop&w=1200&q=80",
-    "Montreal": "https://images.unsplash.com/photo-1519178614-68673b201f36?auto=format&fit=crop&w=1200&q=80",
-    "Dublin": "https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=1200&q=80",
-    "New York": "https://images.unsplash.com/photo-1499092346589-b9b6be3e94b2?auto=format&fit=crop&w=1200&q=80",
-    "Paris": "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1200&q=80",
-    "Tokyo": "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=1200&q=80",
-    "Barcelona": "https://images.unsplash.com/photo-1583422409516-2895a77efded?auto=format&fit=crop&w=1200&q=80",
-    "Singapore": "https://images.unsplash.com/photo-1525625293386-3f8f99389edd?auto=format&fit=crop&w=1200&q=80",
-    "Sydney": "https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?auto=format&fit=crop&w=1200&q=80",
-    "Dubai": "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1200&q=80",
-}
-
-ICON_MAP = {
-    "01d": "☀️", "01n": "🌙",
-    "02d": "🌤️", "02n": "☁️",
-    "03d": "☁️", "03n": "☁️",
-    "04d": "☁️", "04n": "☁️",
-    "09d": "🌧️", "09n": "🌧️",
-    "10d": "🌦️", "10n": "🌧️",
-    "11d": "⛈️", "11n": "⛈️",
-    "13d": "❄️", "13n": "❄️",
-    "50d": "🌫️", "50n": "🌫️",
+    "Manchester": "https://images.unsplash.com/photo-1529421306624-54a91fd114e3?auto=format&fit=crop&w=1600&q=80",
+    "London": "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=1600&q=80",
+    "Edinburgh": "https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?auto=format&fit=crop&w=1600&q=80",
+    "Montreal": "https://images.unsplash.com/photo-1519178614-68673b201f36?auto=format&fit=crop&w=1600&q=80",
+    "Dublin": "https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=1600&q=80",
+    "New York": "https://images.unsplash.com/photo-1499092346589-b9b6be3e94b2?auto=format&fit=crop&w=1600&q=80",
+    "Paris": "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1600&q=80",
+    "Tokyo": "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=1600&q=80",
+    "Barcelona": "https://images.unsplash.com/photo-1583422409516-2895a77efded?auto=format&fit=crop&w=1600&q=80",
+    "Singapore": "https://images.unsplash.com/photo-1525625293386-3f8f99389edd?auto=format&fit=crop&w=1600&q=80",
+    "Sydney": "https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?auto=format&fit=crop&w=1600&q=80",
+    "Dubai": "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1600&q=80",
 }
 
 AQI_LABELS = {
@@ -64,88 +52,32 @@ AQI_LABELS = {
     5: "Very Poor",
 }
 
-BASE_TEMPLATE = """
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ page_title }}</title>
-    <meta name="theme-color" content="#081120">
-    <style>
-        ... (see user-provided code for full CSS) ...
-    </style>
-</head>
-<body>
-    <div class="shell">
-        <div class="nav-wrap">
-            <nav class="nav glass">
-                <div class="brand">
-                    <div class="brand-mark"></div>
-                    <div>
-                        <p class="brand-title">Atmos</p>
-                        <p class="brand-subtitle">Modern weather for the day ahead</p>
-                    </div>
-                </div>
-                <div class="nav-links">
-                    <a class="nav-link {% if active_page == 'home' %}active{% endif %}" href="{{ url_for('home') }}">Home</a>
-                    <a class="nav-link {% if active_page == 'weather' %}active{% endif %}" href="{{ url_for('weather_page') }}">Weather</a>
-                    <a class="nav-link {% if active_page == 'cities' %}active{% endif %}" href="{{ url_for('cities_page') }}">Cities</a>
-                </div>
-            </nav>
-        </div>
-
-        {{ content|safe }}
-
-        <footer class="footer glass">
-            <div>Atmos · live weather dashboard</div>
-            <div>Built with Flask · OpenWeather data</div>
-        </footer>
-    </div>
-
-    <script>
-        const reveals = document.querySelectorAll('.reveal');
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach((entry) => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('in-view');
-                }
-            });
-        }, { threshold: 0.12 });
-
-        reveals.forEach((element, index) => {
-            element.style.transition = 'opacity 600ms ease, translate 600ms ease, transform 240ms ease, box-shadow 240ms ease, border-color 240ms ease';
-            element.style.transitionDelay = `${index * 45}ms`;
-            observer.observe(element);
-        });
-    </script>
-</body>
-</html>
-"""
-
-# The rest of the code: HOME_CONTENT, WEATHER_CONTENT, CITIES_CONTENT, and all logic as provided by the user.
-
-HOME_CONTENT = """
-... (see user-provided code for full HOME_CONTENT) ...
-"""
-
-WEATHER_CONTENT = """
-... (see user-provided code for full WEATHER_CONTENT) ...
-"""
-
-CITIES_CONTENT = """
-... (see user-provided code for full CITIES_CONTENT) ...
-"""
+CITY_CACHE = {}
+CACHE_TTL_SECONDS = 600
 
 
 def safe_round(value, digits=0):
     if value is None:
         return "--"
-    return round(value, digits) if digits else round(value)
+    if digits == 0:
+        return round(value)
+    return round(value, digits)
 
 
-def weather_symbol(icon_code):
-    return ICON_MAP.get(icon_code, "🌤️")
+def icon_url(icon_code):
+    if not icon_code:
+        return ""
+    return f"https://openweathermap.org/img/wn/{icon_code}@2x.png"
+
+
+def city_image_url(city_name):
+    if not city_name:
+        return ""
+    for mapped_city, image_url in CITY_BACKGROUNDS.items():
+        if mapped_city.lower() == city_name.lower():
+            return image_url
+    query = quote_plus(f"{city_name} skyline night")
+    return f"https://source.unsplash.com/1600x1000/?{query}"
 
 
 def format_local_time(timestamp_value, tz_offset_seconds, fmt):
@@ -155,86 +87,71 @@ def format_local_time(timestamp_value, tz_offset_seconds, fmt):
     return datetime.fromtimestamp(timestamp_value, tz=tz_info).strftime(fmt)
 
 
-def pretty_description(raw_description):
-    if not raw_description:
-        return "Unknown"
-    normalized = raw_description.strip().lower()
-    replacements = {
-        "sky is clear": "Clear Sky",
-        "few clouds": "Partly Cloudy",
-        "scattered clouds": "Scattered Clouds",
-        "broken clouds": "Broken Clouds",
-        "overcast clouds": "Overcast",
-        "light rain": "Light Rain",
-        "moderate rain": "Rain",
-        "heavy intensity rain": "Heavy Rain",
-        "very heavy rain": "Very Heavy Rain",
-        "extreme rain": "Extreme Rain",
-        "light snow": "Light Snow",
-        "heavy snow": "Heavy Snow",
-        "mist": "Misty",
-        "haze": "Hazy",
-        "smoke": "Smoky",
-    }
-    return replacements.get(normalized, normalized.title())
-
-
-def render_page(page_title, active_page, content_template, **context):
-    content = render_template_string(content_template, **context)
-    return render_template_string(
-        BASE_TEMPLATE,
-        page_title=page_title,
-        active_page=active_page,
-        content=content,
-    )
+def fetch_json(url, params, timeout=8):
+    response = requests.get(url, params=params, timeout=timeout)
+    response.raise_for_status()
+    return response.json()
 
 
 def get_coordinates(city_name):
-    params = {"q": city_name, "limit": 1, "appid": API_KEY}
-    response = requests.get(GEOCODE_URL, params=params, timeout=8)
-    response.raise_for_status()
-    results = response.json()
-    return results[0] if results else None
+    return fetch_json(
+        GEOCODE_URL,
+        {
+            "q": city_name,
+            "limit": 1,
+            "appid": API_KEY,
+        },
+    )
 
 
 def get_current_weather(lat, lon):
-    params = {"lat": lat, "lon": lon, "appid": API_KEY, "units": "metric"}
-    response = requests.get(WEATHER_URL, params=params, timeout=8)
-    response.raise_for_status()
-    return response.json()
+    return fetch_json(
+        WEATHER_URL,
+        {
+            "lat": lat,
+            "lon": lon,
+            "appid": API_KEY,
+            "units": "metric",
+        },
+    )
 
 
 def get_current_weather_by_city(city_name):
-    params = {"q": city_name, "appid": API_KEY, "units": "metric"}
-    response = requests.get(WEATHER_URL, params=params, timeout=8)
-    response.raise_for_status()
-    return response.json()
+    return fetch_json(
+        WEATHER_URL,
+        {
+            "q": city_name,
+            "appid": API_KEY,
+            "units": "metric",
+        },
+    )
 
 
-def get_forecast(lat, lon, count=8):
-    params = {"lat": lat, "lon": lon, "appid": API_KEY,
-              "units": "metric", "cnt": count}
-    response = requests.get(FORECAST_URL, params=params, timeout=8)
-    response.raise_for_status()
-    return response.json()
-
-
-def get_full_forecast(lat, lon):
-    params = {"lat": lat, "lon": lon, "appid": API_KEY, "units": "metric"}
-    response = requests.get(FORECAST_URL, params=params, timeout=8)
-    response.raise_for_status()
-    return response.json()
+def get_forecast(lat, lon, count=None):
+    params = {
+        "lat": lat,
+        "lon": lon,
+        "appid": API_KEY,
+        "units": "metric",
+    }
+    if count is not None:
+        params["cnt"] = count
+    return fetch_json(FORECAST_URL, params)
 
 
 def get_air_pollution(lat, lon):
-    params = {"lat": lat, "lon": lon, "appid": API_KEY}
-    response = requests.get(AIR_POLLUTION_URL, params=params, timeout=8)
-    response.raise_for_status()
-    return response.json()
+    return fetch_json(
+        AIR_POLLUTION_URL,
+        {
+            "lat": lat,
+            "lon": lon,
+            "appid": API_KEY,
+        },
+    )
 
 
 def build_weather_context(current_data, coordinate_data, air_data):
-    weather_entry = current_data["weather"][0]
+    weather_entry = current_data.get("weather", [{}])[0]
     main_data = current_data.get("main", {})
     wind_data = current_data.get("wind", {})
     sys_data = current_data.get("sys", {})
@@ -249,7 +166,11 @@ def build_weather_context(current_data, coordinate_data, air_data):
     state_name = coordinate_data.get("state")
     country_code = current_data.get("sys", {}).get(
         "country") or coordinate_data.get("country", "--")
-    location = f"{location_name}, {state_name}, {country_code}" if state_name else f"{location_name}, {country_code}"
+
+    if state_name:
+        location = f"{location_name}, {state_name}, {country_code}"
+    else:
+        location = f"{location_name}, {country_code}"
 
     air_item = {}
     air_components = {}
@@ -259,8 +180,10 @@ def build_weather_context(current_data, coordinate_data, air_data):
         air_components = air_item.get("components", {})
 
     timezone_hours = tz_offset / 3600
-    timezone_name = f"UTC{int(timezone_hours):+d}" if timezone_hours == int(
-        timezone_hours) else f"UTC{timezone_hours:+.1f}"
+    if timezone_hours == int(timezone_hours):
+        timezone_name = f"UTC{int(timezone_hours):+d}"
+    else:
+        timezone_name = f"UTC{timezone_hours:+.1f}"
 
     return {
         "location": location,
@@ -283,8 +206,8 @@ def build_weather_context(current_data, coordinate_data, air_data):
         "sunset": format_local_time(sys_data.get("sunset"), tz_offset, "%H:%M"),
         "rain_1h": safe_round(rain_data.get("1h"), 1),
         "snow_1h": safe_round(snow_data.get("1h"), 1),
-        "description": pretty_description(weather_entry.get("description", "Unknown")),
-        "symbol": weather_symbol(weather_entry.get("icon")),
+        "description": weather_entry.get("description", "Unknown").title(),
+        "icon_url": icon_url(weather_entry.get("icon")),
         "lat": safe_round(current_data.get("coord", {}).get("lat"), 2),
         "lon": safe_round(current_data.get("coord", {}).get("lon"), 2),
         "timezone_name": timezone_name,
@@ -295,22 +218,24 @@ def build_weather_context(current_data, coordinate_data, air_data):
         "no2": safe_round(air_components.get("no2"), 1),
         "o3": safe_round(air_components.get("o3"), 1),
         "so2": safe_round(air_components.get("so2"), 1),
+        "image_url": city_image_url(location_name),
     }
 
 
 def build_hourly_context(forecast_data, tz_offset):
     items = []
     for entry in forecast_data.get("list", []):
-        weather_entry = entry["weather"][0]
+        weather_entry = entry.get("weather", [{}])[0]
         main_data = entry.get("main", {})
         wind_data = entry.get("wind", {})
+
         items.append(
             {
                 "time": format_local_time(entry.get("dt"), tz_offset, "%a %H:%M"),
                 "temp": safe_round(main_data.get("temp")),
                 "feels_like": safe_round(main_data.get("feels_like")),
-                "description": pretty_description(weather_entry.get("description", "Unknown")),
-                "symbol": weather_symbol(weather_entry.get("icon")),
+                "description": weather_entry.get("description", "Unknown").title(),
+                "icon_url": icon_url(weather_entry.get("icon")),
                 "pop": safe_round((entry.get("pop") or 0) * 100),
                 "wind_speed": safe_round(wind_data.get("speed"), 1),
                 "humidity": main_data.get("humidity", "--"),
@@ -334,14 +259,15 @@ def build_daily_summary(full_forecast_data, tz_offset):
         wind_speeds = [item.get("wind", {}).get(
             "speed") for item in entries if item.get("wind", {}).get("speed") is not None]
         pops = [(item.get("pop") or 0) * 100 for item in entries]
+
         midday_entry = entries[len(entries) // 2]
         weather_entry = midday_entry.get("weather", [{}])[0]
 
         summaries.append(
             {
                 "day_name": format_local_time(midday_entry.get("dt"), tz_offset, "%A"),
-                "description": pretty_description(weather_entry.get("description", "Unknown")),
-                "symbol": weather_symbol(weather_entry.get("icon")),
+                "description": weather_entry.get("description", "Unknown").title(),
+                "icon_url": icon_url(weather_entry.get("icon")),
                 "temp_min": safe_round(min(temps) if temps else None),
                 "temp_max": safe_round(max(temps) if temps else None),
                 "humidity": safe_round(sum(humidities) / len(humidities), 0) if humidities else "--",
@@ -349,127 +275,214 @@ def build_daily_summary(full_forecast_data, tz_offset):
                 "pop": safe_round(max(pops) if pops else None),
             }
         )
+
     return summaries
 
 
-def build_city_card_context(city_name, current_data):
-    weather_entry = current_data["weather"][0]
+def from_cache(key):
+    payload = CITY_CACHE.get(key)
+    if not payload:
+        return None
+    if time.time() - payload["ts"] > CACHE_TTL_SECONDS:
+        CITY_CACHE.pop(key, None)
+        return None
+    return payload["value"]
+
+
+def set_cache(key, value):
+    CITY_CACHE[key] = {"ts": time.time(), "value": value}
+
+
+def get_city_snapshot(city_name):
+    cache_key = f"snapshot::{city_name.lower()}"
+    cached = from_cache(cache_key)
+    if cached:
+        return cached
+
+    current_data = get_current_weather_by_city(city_name)
+    weather_entry = current_data.get("weather", [{}])[0]
     main_data = current_data.get("main", {})
-    wind_data = current_data.get("wind", {})
-    visibility_m = current_data.get("visibility")
-    sys_data = current_data.get("sys", {})
+
+    snapshot = {
+        "city": current_data.get("name", city_name),
+        "country": current_data.get("sys", {}).get("country", "--"),
+        "description": weather_entry.get("description", "Unknown").title(),
+        "temp": safe_round(main_data.get("temp")),
+        "temp_min": safe_round(main_data.get("temp_min")),
+        "temp_max": safe_round(main_data.get("temp_max")),
+        "humidity": main_data.get("humidity", "--"),
+        "wind_speed": safe_round(current_data.get("wind", {}).get("speed"), 1),
+        "icon_url": icon_url(weather_entry.get("icon")),
+        "image_url": city_image_url(current_data.get("name", city_name)),
+        "updated": format_local_time(current_data.get("dt"), current_data.get("timezone", 0), "%H:%M"),
+    }
+    set_cache(cache_key, snapshot)
+    return snapshot
+
+
+def get_saved_city_snapshots(cities):
+    cards = []
+    for city_name in cities:
+        try:
+            cards.append(get_city_snapshot(city_name))
+        except requests.exceptions.RequestException:
+            cards.append(
+                {
+                    "city": city_name,
+                    "country": "--",
+                    "description": "Weather unavailable",
+                    "temp": "--",
+                    "temp_min": "--",
+                    "temp_max": "--",
+                    "humidity": "--",
+                    "wind_speed": "--",
+                    "icon_url": "",
+                    "image_url": city_image_url(city_name),
+                    "updated": "--",
+                }
+            )
+    return cards
+
+
+def fetch_city_bundle(city_name):
+    if not API_KEY:
+        raise RuntimeError(
+            "Missing API key. Set OPENWEATHER_API_KEY before starting Flask.")
+
+    coordinate_results = get_coordinates(city_name)
+    if not coordinate_results:
+        return None
+
+    coordinate_data = coordinate_results[0]
+    lat = coordinate_data["lat"]
+    lon = coordinate_data["lon"]
+
+    current_data = get_current_weather(lat, lon)
+    forecast_data = get_forecast(lat, lon, count=8)
+    full_forecast_data = get_forecast(lat, lon)
+    air_data = get_air_pollution(lat, lon)
+    tz_offset = current_data.get("timezone", 0)
 
     return {
-        "city": current_data.get("name", city_name),
-        "country_code": sys_data.get("country", "--"),
-        "temp": safe_round(main_data.get("temp")),
-        "feels_like": safe_round(main_data.get("feels_like")),
-        "humidity": main_data.get("humidity", "--"),
-        "wind_speed": safe_round(wind_data.get("speed"), 1),
-        "visibility_km": safe_round((visibility_m or 0) / 1000, 1) if visibility_m is not None else "--",
-        "description": pretty_description(weather_entry.get("description", "Unknown")),
-        "symbol": weather_symbol(weather_entry.get("icon")),
-        "photo_url": CITY_BACKGROUNDS.get(city_name, CITY_BACKGROUNDS["London"]),
+        "weather": build_weather_context(current_data, coordinate_data, air_data),
+        "forecast": build_hourly_context(forecast_data, tz_offset),
+        "daily_summary": build_daily_summary(full_forecast_data, tz_offset),
     }
 
 
-def get_city_cards(city_names):
-    cards = []
-    if not API_KEY:
-        return cards
-    for city_name in city_names:
-        try:
-            current_data = get_current_weather_by_city(city_name)
-            cards.append(build_city_card_context(city_name, current_data))
-        except requests.RequestException:
-            continue
-    return cards
+def load_city_bundle_for_view(city):
+    error = None
+    weather_bundle = None
+
+    if not city:
+        if not API_KEY:
+            return None, "Missing API key. Set OPENWEATHER_API_KEY before starting Flask."
+        return None, None
+
+    try:
+        weather_bundle = fetch_city_bundle(city)
+        if weather_bundle is None:
+            error = "City not found. Try a more specific name."
+    except RuntimeError as exc:
+        error = str(exc)
+    except requests.exceptions.HTTPError:
+        error = "The weather provider returned an error for that location."
+    except requests.exceptions.RequestException:
+        error = "Network issue while contacting OpenWeather."
+    except (KeyError, IndexError, ValueError):
+        error = "Unexpected weather data format received from provider."
+
+    return weather_bundle, error
 
 
 @app.route("/")
 def home():
-    hero_cards = get_city_cards(SAVED_CITIES[:4])
-    featured_cities = get_city_cards(SAVED_CITIES[2:6])
-    photo_cards = [
-        {"city": city, "description": "City atmosphere and live weather context",
-            "photo_url": CITY_BACKGROUNDS[city]}
-        for city in ["Manchester", "New York", "Tokyo"]
-    ]
-    return render_page(
-        "Atmos · Home",
-        "home",
-        HOME_CONTENT,
-        hero_cards=hero_cards,
-        featured_cities=featured_cities,
-        photo_cards=photo_cards,
+    city = (request.args.get("city") or "London").strip()
+    weather_bundle, error = load_city_bundle_for_view(city)
+
+    spotlight_cards = []
+    if API_KEY:
+        spotlight_cards = get_saved_city_snapshots(SAVED_CITIES)
+
+    return render_template(
+        "home.html",
+        city=city,
+        error=error,
+        saved_cities=SAVED_CITIES,
+        spotlight_cards=spotlight_cards,
+        weather=weather_bundle["weather"] if weather_bundle else None,
+        forecast=weather_bundle["forecast"] if weather_bundle else [],
+        daily_summary=weather_bundle["daily_summary"] if weather_bundle else [
+        ],
+    )
+
+
+@app.route("/city", methods=["GET", "POST"])
+def city_detail():
+    city = ""
+    if request.method == "POST":
+        city = (request.form.get("city") or request.form.get(
+            "saved_city") or "").strip()
+    else:
+        city = (request.args.get("city") or "").strip()
+
+    weather_bundle, error = load_city_bundle_for_view(city)
+
+    return render_template(
+        "city.html",
+        city=city,
+        error=error,
+        saved_cities=SAVED_CITIES,
+        weather=weather_bundle["weather"] if weather_bundle else None,
+        forecast=weather_bundle["forecast"] if weather_bundle else [],
+        daily_summary=weather_bundle["daily_summary"] if weather_bundle else [
+        ],
     )
 
 
 @app.route("/weather", methods=["GET", "POST"])
 def weather_page():
-    city = "Manchester"
-    error = None
-    weather = None
-    forecast = []
-    daily_summary = []
-
     if request.method == "POST":
         city = (request.form.get("city") or request.form.get(
             "saved_city") or "").strip()
-
+    else:
+        city = (request.args.get("city") or "").strip()
     if city:
-        if not API_KEY:
-            error = "Missing API key. Set OPENWEATHER_API_KEY before starting Flask."
-        else:
-            try:
-                coordinate_data = get_coordinates(city)
-                if not coordinate_data:
-                    error = "City not found. Try a more specific name."
-                else:
-                    lat = coordinate_data["lat"]
-                    lon = coordinate_data["lon"]
-                    current_data = get_current_weather(lat, lon)
-                    forecast_data = get_forecast(lat, lon, count=8)
-                    full_forecast_data = get_full_forecast(lat, lon)
-                    air_data = get_air_pollution(lat, lon)
-                    tz_offset = current_data.get("timezone", 0)
-
-                    weather = build_weather_context(
-                        current_data, coordinate_data, air_data)
-                    forecast = build_hourly_context(forecast_data, tz_offset)
-                    daily_summary = build_daily_summary(
-                        full_forecast_data, tz_offset)
-            except requests.exceptions.HTTPError:
-                error = "The weather provider returned an error for that location."
-            except requests.exceptions.RequestException as exc:
-                error = f"Network error: {exc}"
-            except (KeyError, IndexError, ValueError):
-                error = "The provider returned data in an unexpected format."
-
-    return render_page(
-        "Atmos · Weather",
-        "weather",
-        WEATHER_CONTENT,
-        city=city,
-        saved_cities=SAVED_CITIES,
-        weather=weather,
-        forecast=forecast,
-        daily_summary=daily_summary,
-        error=error,
-    )
+        return redirect(url_for("city_detail", city=city))
+    return redirect(url_for("city_detail"))
 
 
 @app.route("/cities")
 def cities_page():
-    city_cards = get_city_cards(SAVED_CITIES)
-    spotlight_cities = city_cards[:4]
-    return render_page(
-        "Atmos · Cities",
-        "cities",
-        CITIES_CONTENT,
-        city_cards=city_cards,
-        spotlight_cities=spotlight_cities,
+    city_filter = (request.args.get("city") or "").strip()
+
+    city_list = list(SAVED_CITIES)
+    if city_filter and city_filter not in city_list:
+        city_list.insert(0, city_filter)
+
+    error = None
+    cards = []
+
+    if not API_KEY:
+        error = "Missing API key. Set OPENWEATHER_API_KEY before starting Flask."
+    else:
+        try:
+            cards = get_saved_city_snapshots(city_list)
+        except requests.exceptions.RequestException:
+            error = "Network issue while loading city snapshots."
+
+    return render_template(
+        "cities.html",
+        cards=cards,
+        error=error,
+        city_filter=city_filter,
+        city=city_filter,
     )
+
+
+@app.route("/health")
+def health():
+    return {"status": "ok"}, 200
 
 
 if __name__ == "__main__":
